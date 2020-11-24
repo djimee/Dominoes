@@ -29,3 +29,20 @@ blocked (d:ds) board = not (canPlay d L board) && not (canPlay d R board) && blo
 played :: Domino -> Board -> Bool
 played (_,_) [] = False
 played (l,r) board = elem (l,r) board && elem (r,l) board
+
+--possPlays :: Hand -> Board -> ([Domino], [Domino])
+--possPlays [] board = null 
+
+playDom :: Domino -> Board -> End -> Maybe Board
+playDom domino [] end = Just [domino]
+playDom (l,r) board@((pips,_):_) L 
+    | l == pips = Just ((r,l):board)
+    | r == pips = Just ((l,r):board)
+    | otherwise = Nothing
+playDom (l,r) board R
+    | l == pips = Just ((r,l):board)
+    | r == pips = Just ((l,r):board)
+    | otherwise = Nothing
+        where
+            (_,pips) = last board
+
