@@ -52,9 +52,9 @@ possPlays hand board
         = possPlays' ds board (ls, rs)
           where
           ls | canPlay d L board = d:leftPoss
-             | otherwise = ls
+             | otherwise = leftPoss
           rs | canPlay d R board = d:rightPoss
-             | otherwise = rs
+             | otherwise = rightPoss
 
 {- playDom attempts to place a domino at the given end of a board it returns the Just the new board
    if it is a valid play, Nothing otherwise -}
@@ -65,8 +65,8 @@ playDom (m,n) board@((val,_):_) L
     | m == val  = Just ((n,m):board) -- need to flip the domino to play it
     | otherwise = Nothing            -- cannot play domino
 playDom (m,n) board R
-    | m == val  = Just ((m,n):board) -- play domino as is
-    | n == val  = Just ((n,m):board) -- flip the domino to play it
+    | m == val  = Just (board++[(m,n)]) -- play domino as is
+    | n == val  = Just (board++[(n,m)]) -- flip the domino to play it
     | otherwise = Nothing            -- cannot play this domino
       where (_,val) = last board
 
@@ -80,7 +80,7 @@ scoreBoard board@(left:_)
       where
       right = last board
       pips (m,n) end
-            | m == n    = m+n -- both ends of a double count because it gets plays crosswise
+            | m == n && left /= right = m+n -- both ends of a double count because it gets plays crosswise
             | end == L  = m
             | otherwise = n
       score n 
@@ -95,6 +95,28 @@ scoreBoard board@(left:_)
             | n == 20   = 4 -- 4 "5"s
             | otherwise = 0 -- not a multiple of 3 or 5
 
+{- scoreN takes a board and a target score and returns each unplayed domino and the end to play it on
+   to get that target score -}
+scoreN :: Board -> Int ->[(Domino, End)]
+scoreN board n = scoreN' board domSet []
+                 where
+                 scoreN' board [] options = options
+                 scoreN' board (domino:rest) options
+                    | played domino board = scoreN' board rest options -- skip this domino if already played
+                    | otherwise = scoreN' board rest newOptions
+                      where
+                      leftBoard = playDom domino board L    -- try playing it on the left end
+                      rightBoard = playDom domino board R   -- try playing it on the right end
+                      -- now for each try, see 1) if it was legal and 2) if it achieved the desired score
+                      goodLeft = leftBoard /= Nothing && scoreB leftBoard == n 
+                      goodRight = rightBoard /= Nothing && scoreB rightBoard == n
+                      -- scoreB is only going to be used if it is Just something, so grab the "something"
+                      scoreB (Just board) = scoreBoard board
+                      newOptions
+                        | goodLeft && goodRight = (domino,L):(domino,R):options -- play either end for this score
+                        | goodLeft = (domino,L):options -- left end only for this score
+                        | goodRight = (domino,R):options -- right end only for this score
+                        | otherwise = options   -- can't achieve this score with this domino
 
 hand1 :: Hand
 hand1 = [(3,3),(1,2),(3,5),(4,3),(0,0),(4,4)]
