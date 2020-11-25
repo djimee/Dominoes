@@ -1,3 +1,5 @@
+import Data.List
+
 type Domino = (Int,Int)
 
 type Hand = [Domino]
@@ -66,3 +68,10 @@ scoreBoard board@((l,r):_)
     | otherwise = scoreConverter (l+rightendPips)
     where
         (_,rightendPips) = last board
+
+-- gives set of dominoes that are in the hands of players'
+handDominoes :: [Domino] -> Board -> [Domino]
+handDominoes dominoes board = dominoes \\ board
+
+scoreN :: Board -> Int -> [(Domino, End)]
+scoreN board 
