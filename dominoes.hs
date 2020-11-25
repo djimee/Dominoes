@@ -46,3 +46,23 @@ playDom (l,r) board R
         where
             (_,pips) = last board
 
+-- possible score combinations taken from solution
+scoreConverter :: Int -> Int
+scoreConverter n 
+    | n == 3    = 1 -- 1 "3"
+    | n == 5    = 1 -- 1 "5"
+    | n == 6    = 2 -- 2 "3"s
+    | n == 9    = 3 -- 2 "3"s
+    | n == 10   = 2 -- 2 "5"s
+    | n == 12   = 4 -- 4 "3"s
+    | n == 15   = 8 -- 5 "3"s + 3 "5"s
+    | n == 18   = 6 -- 6 "3"s
+    | n == 20   = 4 -- 4 "5"s
+    | otherwise = 0 -- not a multiple of 3 or 5
+
+scoreBoard :: Board -> Int
+scoreBoard board@((l,r):_)
+    | l == r = scoreConverter (l+r+rightendPips)
+    | otherwise = scoreConverter (l+rightendPips)
+    where
+        (_,rightendPips) = last board
