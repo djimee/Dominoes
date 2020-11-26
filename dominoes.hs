@@ -69,9 +69,34 @@ scoreBoard board@((l,r):_)
     where
         (_,rightendPips) = last board
 
--- gives set of dominoes that are in the hands of players'
-handDominoes :: [Domino] -> Board -> [Domino]
-handDominoes dominoes board = dominoes \\ board
+scoreN :: Board -> Int ->[(Domino, End)]
+scoreN board n = scoreN' board domSet []
+                 where
+                 scoreN' board [] options = options
+                 scoreN' board (domino:rest) options
+                    | played domino board = scoreN' board rest options -- skip this domino if already played
+                    | otherwise = scoreN' board rest newOptions
+                      where
+                      leftBoard = playDom domino board L    -- try playing it on the left end
+                      rightBoard = playDom domino board R   -- try playing it on the right end
+                      -- now for each try, see 1) if it was legal and 2) if it achieved the desired score
+                      goodLeft = leftBoard /= Nothing && scoreB leftBoard == n 
+                      goodRight = rightBoard /= Nothing && scoreB rightBoard == n
+                      -- scoreB is only going to be used if it is Just something, so grab the "something"
+                      scoreB (Just board) = scoreBoard board
+                      newOptions
+                        | goodLeft && goodRight = (domino,L):(domino,R):options -- play either end for this score
+                        | goodLeft = (domino,L):options -- left end only for this score
+                        | goodRight = (domino,R):options -- right end only for this score
+                        | otherwise = options   -- can't achieve this score with this domino
 
-scoreN :: Board -> Int -> [(Domino, End)]
-scoreN board 
+--scoreN :: Board -> Int -> [(Domino, End)]
+--scoreN board n =
+
+domSet = [(6,6),(6,5),(6,4),(6,3),(6,2),(6,1),(6,0),
+                (5,5),(5,4),(5,3),(5,2),(5,1),(5,0),
+                      (4,4),(4,3),(4,2),(4,1),(4,0),
+                            (3,3),(3,2),(3,1),(3,0),
+                                  (2,2),(2,1),(2,0),
+                                        (1,1),(1,0),
+                                              (0,0)]
