@@ -1,5 +1,6 @@
 import Data.List
 import System.Random
+import Debug.Trace
 
 type Domino = (Int,Int)
 
@@ -101,8 +102,6 @@ scoreN board n = scoreN' board domSet []
                         | goodRight = (domino,R):options -- right end only for this score
                         | otherwise = options   -- can't achieve this score with this domino
 
-domSet = [(l,r) | l <- [0..6], r <- [0..6]]
-
 type DomsPlayer = Hand -> Board -> (Domino, End)
 
 simplePlayer :: DomsPlayer
@@ -110,3 +109,9 @@ simplePlayer (domino:rest) board
     | playDom domino board L /= Nothing = (domino,L)
     | playDom domino board R /= Nothing = (domino,R) 
     | otherwise = simplePlayer rest board
+
+shuffleDoms :: StdGen -> [Domino]
+cmp (x1,y1) (x2,y2) = compare y1 y2
+shuffleDoms gen = [leftPips | (leftPips, n) <- sortBy cmp (zip domSet (randoms gen :: [Int]))]
+
+domSet = [(l,r) | l <- [0..6], r <- [0..6]]
