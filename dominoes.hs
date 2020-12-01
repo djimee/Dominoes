@@ -1,4 +1,5 @@
 import Data.List
+import System.Random
 
 type Domino = (Int,Int)
 
@@ -32,8 +33,18 @@ played :: Domino -> Board -> Bool
 played (_,_) [] = False
 played (l,r) board = elem (l,r) board && elem (r,l) board
 
---possPlays :: Hand -> Board -> ([Domino], [Domino])
---possPlays [] board = null 
+possPlays :: Hand -> Board -> ([Domino],[Domino])
+possPlays hand board
+    = possPlays' hand board ([],[])
+      where
+      possPlays' [] board possibilities = possibilities
+      possPlays' (d:ds) board (leftPoss,rightPoss)
+        = possPlays' ds board (ls, rs)
+          where
+          ls | canPlay d L board = d:leftPoss
+             | otherwise = leftPoss
+          rs | canPlay d R board = d:rightPoss
+             | otherwise = rightPoss
 
 playDom :: Domino -> Board -> End -> Maybe Board
 playDom domino [] end = Just [domino]
@@ -90,9 +101,6 @@ scoreN board n = scoreN' board domSet []
                         | goodRight = (domino,R):options -- right end only for this score
                         | otherwise = options   -- can't achieve this score with this domino
 
---scoreN :: Board -> Int -> [(Domino, End)]
---scoreN board n =
-
 domSet = [(6,6),(6,5),(6,4),(6,3),(6,2),(6,1),(6,0),
                 (5,5),(5,4),(5,3),(5,2),(5,1),(5,0),
                       (4,4),(4,3),(4,2),(4,1),(4,0),
@@ -100,3 +108,11 @@ domSet = [(6,6),(6,5),(6,4),(6,3),(6,2),(6,1),(6,0),
                                   (2,2),(2,1),(2,0),
                                         (1,1),(1,0),
                                               (0,0)]
+
+type DomsPlayer = Hand -> Board -> (Domino, End)
+
+simplePlayer :: DomsPlayer
+simplePlayer (domino:rest) board
+    | playDom domino board L /= Nothing = (domino,L)
+    | playDom domino board R /= Nothing = (domino,R) 
+    | otherwise simplePlayer rest board
