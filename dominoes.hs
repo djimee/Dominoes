@@ -11,29 +11,30 @@ type Board = [Domino]
 data End = L | R
 
 canPlay :: Domino -> End -> Board -> Bool
--- canPlay is True when the board is empty
 canPlay domino end [] = True
+{-- check if domino can be played on either end by seeing 
+    if the left or right pips match the end of another domino --}
 canPlay (l,r) L ((pips,_):_)
-    | l == pips = True
-    | r == pips = True
+    | (l == pips || r == pips) = True
     | otherwise = False
 canPlay (l,r) R board
-    | l == pips = True
-    | r == pips = True
+    | (l == pips || r == pips) = True
     | otherwise = False
     where
         (_,pips) = last board
 
+{-- hand is blocked if the player has no dominoes in a hand or if 
+    they can't play on L/r end and rest of dominoes are blocked --}
 blocked :: Hand -> Board -> Bool
--- hand is blocked if the player has no dominoes in a hand or if they can't play on L/r end and 
--- rest of dominoes are blocked
 blocked [] board = True
 blocked (d:ds) board = not (canPlay d L board) && not (canPlay d R board) && blocked ds board
 
+-- check if a domino is played by seeing if it is a part of the board
 played :: Domino -> Board -> Bool
 played (_,_) [] = False
 played (l,r) board = elem (l,r) board && elem (r,l) board
 
+-- get all the possible plays given the current hand and board (from solutions)
 possPlays :: Hand -> Board -> ([Domino],[Domino])
 possPlays hand board
     = possPlays' hand board ([],[])
@@ -47,6 +48,8 @@ possPlays hand board
           rs | canPlay d R board = d:rightPoss
              | otherwise = rightPoss
 
+{-- play a domino given that it can be played on the current board
+    otherwise don't play the domino --}
 playDom :: Domino -> Board -> End -> Maybe Board
 playDom domino [] end = Just [domino]
 playDom (l,r) board@((pips,_):_) L 
@@ -102,6 +105,8 @@ scoreN board n = scoreN' board domSet []
                         | goodRight = (domino,R):options -- right end only for this score
                         | otherwise = options   -- can't achieve this score with this domino
 
+---------------------------------------------------------- P2 -----------------------------------------------------------------
+
 type DomsPlayer = Hand -> Board -> (Domino, End)
 
 simplePlayer :: DomsPlayer
@@ -115,3 +120,15 @@ cmp (x1,y1) (x2,y2) = compare y1 y2
 shuffleDoms gen = [leftPips | (leftPips, n) <- sortBy cmp (zip domSet (randoms gen :: [Int]))]
 
 domSet = [(l,r) | l <- [0..6], r <- [0..6]]
+
+playDomsRound' :: DomsPlayer -> DomsPlayer -> Hand -> Hand -> Board -> Int -> Int -> (Int,Int)
+playDomsRound' p1 p2 h1 h2 board s1 s2
+    | blocked h1 board && blocked h2 board = (s1,s2)
+    | blocked h1 board = playDomsRound' 
+    | blocked h2 board = playDomsRound'
+
+playDomsRound :: DomsPlayer -> DomsPlayer -> Int -> (Int, Int)
+playDomsRound player1 player2 seed 
+    | 
+    where
+        (p1Hand, p2Hand) = splitAt 14 shuffleDoms (mkStdGen seed)
