@@ -34,7 +34,7 @@ played :: Domino -> Board -> Bool
 played (_,_) [] = False
 played (l,r) board = elem (l,r) board && elem (r,l) board
 
--- get all the possible plays given the current hand and board (from solutions)
+-- get all the possible plays given the current hand and board
 possPlays :: Hand -> Board -> ([Domino],[Domino])
 possPlays hand board
     = possPlays' hand board ([],[])
@@ -77,6 +77,7 @@ scoreConverter n
     | n == 20   = 4 -- 4 "5"s
     | otherwise = 0 -- not a multiple of 3 or 5
 
+-- get score of a given board using the scoreConverter function
 scoreBoard :: Board -> Int
 scoreBoard board@((l,r):_)
     | l == r = scoreConverter (l+r+rightendPips)
@@ -84,6 +85,8 @@ scoreBoard board@((l,r):_)
     where
         (_,rightendPips) = last board
 
+{-- given board and n, return all the dominoes not already played which would give a score of n and the end 
+    at which to play it at--} 
 scoreN :: Board -> Int ->[(Domino, End)]
 scoreN board n = scoreN' board domSet []
                  where
@@ -109,26 +112,40 @@ scoreN board n = scoreN' board domSet []
 
 type DomsPlayer = Hand -> Board -> (Domino, End)
 
+-- simplePlayer that plays the first domino in hand that will go
 simplePlayer :: DomsPlayer
 simplePlayer (domino:rest) board
     | playDom domino board L /= Nothing = (domino,L)
     | playDom domino board R /= Nothing = (domino,R) 
     | otherwise = simplePlayer rest board
 
+-- shuffle the dominoes given a seed n
 shuffleDoms :: StdGen -> [Domino]
 cmp (x1,y1) (x2,y2) = compare y1 y2
 shuffleDoms gen = [leftPips | (leftPips, n) <- sortBy cmp (zip domSet (randoms gen :: [Int]))]
 
-domSet = [(l,r) | l <- [0..6], r <- [0..6]]
+-- Player data type to keep track of turns
+data Player = P1 | P2 deriving (Eq, Show)
 
-playDomsRound' :: DomsPlayer -> DomsPlayer -> Hand -> Hand -> Board -> Int -> Int -> (Int,Int)
-playDomsRound' p1 p2 h1 h2 board s1 s2
-    | blocked h1 board && blocked h2 board = (s1,s2)
-    | blocked h1 board = playDomsRound' 
-    | blocked h2 board = playDomsRound'
-
+-- play a round of dominoes, alternate recursively until both players are blocked
 playDomsRound :: DomsPlayer -> DomsPlayer -> Int -> (Int, Int)
-playDomsRound player1 player2 seed 
-    | 
-    where
-        (p1Hand, p2Hand) = splitAt 14 shuffleDoms (mkStdGen seed)
+playDomsRound p1 p2 seed 
+    = playDomsRound' p1 p2 P1 (h1, h2, [], (0,0))
+        where
+            h1 = take 7 (shuffleDoms (mkStdGen seed))
+            h2 = take 7 (drop 7 (shuffleDoms (mkStdGen seed)))
+            playDomsRound' p1 p2 turn gameState@(h1, h2, board, (s1,s2))
+                | blocked h1 board && blocked h2 board = (s1,s2)
+                | turn == P1 && blocked h1 board = playDomsRound' p1 p2 P2 gameState 
+                | turn == P2 && blocked h2 board = playDomsRound' p1 p2 P1 gameState
+                | otherwise = playDomsRound' p1 p2 P2 newGameState
+                where
+                    (domino, end) 
+                        | turn == P1 = p1 h1 board
+                        | turn == P2 = p2 h2 board
+                    Just newBoard = playDom domino board end
+                    newGameState
+                        | turn == P1 = (h1\\[domino], h2, newBoard, (s1+(scoreBoard newBoard), s2))
+                        | turn == P2 = (h1, h2\\[domino], newBoard, (s1, (s2 + (scoreBoard newBoard))))
+
+domSet = [(l,r) | l <- [0..6], r <- [0..6]]
