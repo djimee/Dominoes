@@ -1,3 +1,5 @@
+-- pre-assignment task
+
 module Dominoes where
     import Data.List
     import System.Random
@@ -9,7 +11,7 @@ module Dominoes where
 
     type Board = [Domino]
 
-    data End = L | R
+    data End = L | R deriving (Eq, Show)
 
     canPlay :: Domino -> End -> Board -> Bool
     canPlay domino end [] = True
