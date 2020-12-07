@@ -9,6 +9,13 @@ module SmartPlayer1 where
     getBoard InitBoard = []
     getBoard (Board d1 d2 history) = [d1 | (d1, _, _) <- history]
 
+    {-- if the player has first drop and has the domino (5,4), play it
+        because it scores 3 and has a maximum reply of 2 --}
+    firstDropPlay :: Player -> Hand -> DominoBoard -> Maybe DominoBoard
+    firstDropPlay player hand InitBoard
+        | elem (5,4) hand = playDom player (5,4) InitBoard L -- end doesn't matter as it's first drop
+        | otherwise = Nothing
+
     -- get the hand of the opponent - assuming opponent is P2
     getOpponentHand :: DominoBoard -> [Domino]
     getOpponentHand InitBoard = []
@@ -19,6 +26,16 @@ module SmartPlayer1 where
     domScore domino board end = scoreBoard boardScore
         where
             Just boardScore = playDom P1 domino board end 
+    
+    -- get the score of a given player
+    getScore :: Player -> Scores -> Int
+    getScore player scores@(scoreP1, scoreP2)
+        | player == P1 = scoreP1
+        | player == P2 = scoreP2
+
+    -- check for majority of one particuar spot value 
+
+    -- if player has the majority of one particular spot value, then play it
 
     -- given the hand, board and score of the player, can they win? (reach 61)
     canGet61 :: Hand -> DominoBoard -> Int -> Bool
@@ -34,4 +51,11 @@ module SmartPlayer1 where
     canOpponentGet61 _ InitBoard _ = False
     canOpponentGet61 [] board score = False
     canOpponentGet61 oppHand board oppScore = canGet61 oppHand board oppScore 
-        where oppHand = getOpponentHand board
+        where 
+            oppHand = getOpponentHand board
+
+    -- check if the opponent can be blocked
+
+    -- if opponent can win, block them if it is possible
+
+    -- get highest scoring domino given the hand and current board
