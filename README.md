@@ -1,2 +1,2 @@
 # Dominoes
-COM2108 FP Dominoes
+COM2108 Functional Programming Module Dominoes Assignment
