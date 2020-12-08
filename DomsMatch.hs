@@ -163,7 +163,7 @@ module DomsMatch where
     scoreBoard :: DominoBoard -> Int
     scoreBoard InitBoard = 0
     scoreBoard (Board (l1,l2) (r1,r2) _)
-        | left == right = score (l1+l2)
+        | l1 == r1 && l2 == r2 = score (l1+l2)  -- case for just one domino played
         | otherwise     = score (left + right)
           where
           left = if l1 == l2 then 2*l1 else l1

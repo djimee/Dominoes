@@ -33,9 +33,12 @@ module SmartPlayer1 where
         | player == P1 = scoreP1
         | player == P2 = scoreP2
 
-    -- check for majority of one particuar spot value 
+    -- check for majority of one particuar spot value
 
     -- if player has the majority of one particular spot value, then play it
+
+    -- if player is at 53, get a set of dominoes the player can play so that they don't
+    -- go over 61
 
     -- given the hand, board and score of the player, can they win? (reach 61)
     canGet61 :: Hand -> DominoBoard -> Int -> Bool
