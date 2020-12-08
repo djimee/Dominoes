@@ -4,6 +4,8 @@ module SmartPlayer1 where
     import Debug.Trace
     import DomsMatch
 
+    -- defensive player that has a focus on blocking the opponent
+
     -- get the current board using the history
     getBoard :: DominoBoard -> [Domino]
     getBoard InitBoard = []
@@ -38,26 +40,58 @@ module SmartPlayer1 where
     -- if player has the majority of one particular spot value, then play it
 
     -- if player is at 53, get a set of dominoes the player can play so that they don't
-    -- go over 61
+    -- go over 61 - is this needed?
 
+    -- find highest scoring domino 
+    highestScoringDom :: Hand -> DominoBoard -> (Domino, End)
+    highestScoringDom hand board = 
+        where
+            possPlaysTuple = possPlays hand board
+            possPlaysL = fst (possPlaysTuple) 
+            possPlaysR = snd (possPlaysTuple)
+    
     -- given the hand, board and score of the player, can they win? (reach 61)
     canGet61 :: Hand -> DominoBoard -> Int -> Bool
     canGet61 _ InitBoard _ = False
     canGet61 [] board score = False
     canGet61 (d:ds) board score 
-        | (canPlay d R board) && (score + (domScore d board R) == 61) = True
-        | (canPlay d L board) && (score + (domScore d board L) == 61) = True
+        | (canPlay d R board) && (totalRightScore == 61) = True
+        | (canPlay d L board) && (totalLeftScore == 61) = True
         | otherwise = canGet61 ds board score
+            where
+                totalRightScore = score + (domScore d board R)
+                totalLeftScore = score + (domScore d board L)
 
     -- given the opponents' hand, board and score, can they win?
     canOpponentGet61 :: Hand -> DominoBoard -> Int -> Bool
     canOpponentGet61 _ InitBoard _ = False
     canOpponentGet61 [] board score = False
-    canOpponentGet61 oppHand board oppScore = canGet61 oppHand board oppScore 
+    canOpponentGet61 opponentHand board oppScore = canGet61 opponentHand board oppScore 
         where 
-            oppHand = getOpponentHand board
+            opponentHand = getOpponentHand board
 
-    -- check if the opponent can be blocked
+    -- check if the opponent can place a domino before checking whether the opponent can be blocked
+    canPlaceDomino :: Hand -> DominoBoard -> Bool
+    canPlaceDomino _ InitBoard = False
+    canPlaceDomino hand board@(Board d1 d2 history)
+        | possPlaysTuple /= ([],[]) || cantPlay = False
+        | fst possPlaysTuple == [] = canBlockOpponent hand opponentHand R board
+        | snd possPlaysTuple == [] = canBlockOpponent hand opponentHand L board
+        | otherwise = False
+            where 
+                possPlaysTuple = possPlays opponentHand board
+                cantPlay = blocked opponentHand board
+                opponentHand = getOpponentHand board
+    
+    -- check if the opponent can be blocked by placing a certain domino
+    canBlockOpponent :: Hand -> Hand -> End -> DominoBoard -> Bool
+    canBlockOpponent _ _ _ InitBoard  = False
+    canBlockOpponent [] _ _ _ = False
+    canBlockOpponent (d:ds) opponentHand end board@(Board d1 d2 history)
+        | blocked opponentHand updatedBoard = True
+        | otherwise = canBlockOpponent ds opponentHand end board
+            where
+                Just updatedBoard = playDom P1 d board end
 
     -- if opponent can win, block them if it is possible
 
