@@ -43,16 +43,20 @@ module DomsAssignment where
     -- if player is at 53, get a set of dominoes the player can play so that they don't
     -- go over 61 - is this needed?
 
+    sortDoms :: Ord b => [(a, b)] -> [(a, b)]
+    sortDoms = sortBy (flip compare `on` snd) 
+
     -- find highest scoring domino 
     highestScoringDom :: Hand -> DominoBoard -> (Domino, End)
-    highestScoringDom hand board = if (fst leftHighest) > (fst rightHighest) then snd leftHighest L else snd rightHighest R
-        where
-            sortDoms = sortBy (flip compare `on` snd)
-            leftHighest = head (sortDoms (zip possPlaysL [domScore domino board L | domino <- possPlaysL]))
-            rightHighest = head (sortDoms (zip possPlaysR [domScore domino board R | domino <- possPlaysR]))
+    highestScoringDom hand board =
+        let
             possPlaysTuple = possPlays hand board
             possPlaysL = fst (possPlaysTuple) 
             possPlaysR = snd (possPlaysTuple)
+            highestLeftDom = head (sortDoms (zip possPlaysL [domScore domino board L | domino <- possPlaysL]))
+            highestRightDom = head (sortDoms (zip possPlaysR [domScore domino board R | domino <- possPlaysR]))
+        in
+          if (snd (head highestLeftDom)) > (snd (head highestRightDom)) then ((fst (head highestLeftDom)), L) else ((fst (head highestLeftDom)), R)
     
     -- given the hand, board and score of the player, can they win? (reach 61)
     canGet61 :: Hand -> DominoBoard -> Int -> Bool
