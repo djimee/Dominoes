@@ -40,27 +40,6 @@ module DomsAssignment where
 
     -- if player is at 53, get a set of dominoes the player can play so that they don't
     -- go over 61 - is this needed?
-
-    -- find highest scoring domino, if its the first drop, use (5,4) if possible otherwise........... 
-    highestScoringDom :: Hand -> DominoBoard -> (Domino, End)
-    highestScoringDom hand InitBoard
-        | elem (5,4) hand = ((5,4), L) -- use (5,4) if you have first drop, as it gives score of 3, and max reply is 2
-        | otherwise = (head hand, L)
-    highestScoringDom hand board
-        | leftScore >= rightScore = (leftDom, L)
-        | otherwise = (rightDom, R)
-        where
-            possPlaysTuple = possPlays hand board
-            possPlaysL = fst (possPlaysTuple) 
-            possPlaysR = snd (possPlaysTuple)
-            leftDoms = zip possPlaysL [domScore domino board L | domino <- possPlaysL]
-            rightDoms = zip possPlaysR [domScore domino board R | domino <- possPlaysR]
-            (leftDom, leftScore)
-                | not (null leftDoms) = maximumBy (comparing snd) leftDoms 
-                | otherwise = ((0,0),-1) -- given -1 score so that it cannot be chosen as the highest scoring domino if null
-            (rightDom, rightScore)
-                | not (null rightDoms) = maximumBy (comparing snd) rightDoms 
-                | otherwise = ((0,0),-1)
         
     -- given the hand, board and score of the player, can they win? (reach 61)
     canGet61 :: Hand -> DominoBoard -> Int -> Bool
@@ -75,6 +54,8 @@ module DomsAssignment where
                 totalLeftScore = score + (domScore d board L)
 
     -- play domino that will win the game (reach 61) - if it is possible for them to win
+    
+    
 
     -- given the opponents' hand, board and score, can they win?
     canOpponentGet61 :: Hand -> DominoBoard -> Int -> Bool
@@ -108,3 +89,24 @@ module DomsAssignment where
                 Just updatedBoard = playDom P1 d board end
 
     -- if opponent can win, block them if it is possible
+
+    -- find and play highest scoring domino, if its the first drop, use (5,4) if possible otherwise........... 
+    highestScoringDom :: Hand -> DominoBoard -> (Domino, End)
+    highestScoringDom hand InitBoard
+        | elem (5,4) hand = ((5,4), L) -- use (5,4) if you have first drop, as it gives score of 3, and max reply is 2
+        | otherwise = (head hand, L)
+    highestScoringDom hand board
+        | leftScore >= rightScore = (leftDom, L)
+        | otherwise = (rightDom, R)
+        where
+            possPlaysTuple = possPlays hand board
+            possPlaysL = fst (possPlaysTuple) 
+            possPlaysR = snd (possPlaysTuple)
+            leftDoms = zip possPlaysL [domScore domino board L | domino <- possPlaysL]
+            rightDoms = zip possPlaysR [domScore domino board R | domino <- possPlaysR]
+            (leftDom, leftScore)
+                | not (null leftDoms) = maximumBy (comparing snd) leftDoms 
+                | otherwise = ((0,0),-1) -- given -1 score so that it cannot be chosen as the highest scoring domino if null
+            (rightDom, rightScore)
+                | not (null rightDoms) = maximumBy (comparing snd) rightDoms 
+                | otherwise = ((0,0),-1)
