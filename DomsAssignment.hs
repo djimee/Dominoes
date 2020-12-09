@@ -1,10 +1,10 @@
 module DomsAssignment where
+    import DomsMatch
     import System.Random
     import Data.Function 
     import Data.List
-    import Debug.Trace
-    import DomsMatch
     import Data.Ord
+    import Debug.Trace
 
     -- defensive player that has a focus on blocking the opponent and preventing them from winning
 
@@ -46,16 +46,21 @@ module DomsAssignment where
     highestScoringDom hand InitBoard
         | elem (5,4) hand = ((5,4), L) -- use (5,4) if you have first drop, as it gives score of 3, and max reply is 2
         | otherwise = (head hand, L)
-    highestScoringDom hand board = 
-        if leftScore >= rightScore then (leftDom, L) else (rightDom, R)
+    highestScoringDom hand board
+        | leftScore >= rightScore = (leftDom, L)
+        | otherwise = (rightDom, R)
         where
             possPlaysTuple = possPlays hand board
             possPlaysL = fst (possPlaysTuple) 
             possPlaysR = snd (possPlaysTuple)
             leftDoms = zip possPlaysL [domScore domino board L | domino <- possPlaysL]
             rightDoms = zip possPlaysR [domScore domino board R | domino <- possPlaysR]
-            (leftDom, leftScore) = if (not (null leftDoms)) then maximumBy (comparing snd) leftDoms else ((0,0), -1)
-            (rightDom, rightScore) = if (not (null rightDoms)) then maximumBy (comparing snd) rightDoms else ((0,0), -1)
+            (leftDom, leftScore)
+                | not (null leftDoms) = maximumBy (comparing snd) leftDoms 
+                | otherwise = ((0,0),-1) -- given -1 score so that it cannot be chosen as the highest scoring domino if null
+            (rightDom, rightScore)
+                | not (null rightDoms) = maximumBy (comparing snd) rightDoms 
+                | otherwise = ((0,0),-1)
         
     -- given the hand, board and score of the player, can they win? (reach 61)
     canGet61 :: Hand -> DominoBoard -> Int -> Bool
