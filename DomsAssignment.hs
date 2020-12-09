@@ -4,6 +4,7 @@ module DomsAssignment where
     import Data.List
     import Debug.Trace
     import DomsMatch
+    import Data.Ord
 
     -- defensive player that has a focus on blocking the opponent
 
@@ -17,13 +18,6 @@ module DomsAssignment where
     domScore domino board end = scoreBoard boardScore
         where
             Just boardScore = playDom P1 domino board end 
-
-    {-- if the player has first drop and has the domino (5,4), play it
-        because it scores 3 and has a maximum reply of 2 --}
-    firstDropPlay :: Player -> Hand -> DominoBoard -> Maybe DominoBoard
-    firstDropPlay player hand InitBoard
-        | elem (5,4) hand = playDom player (5,4) InitBoard L -- end doesn't matter as it's first drop
-        | otherwise = Nothing
 
     -- get the hand of the opponent - assuming opponent is P2
     getOpponentHand :: DominoBoard -> [Domino]
@@ -43,20 +37,27 @@ module DomsAssignment where
     -- if player is at 53, get a set of dominoes the player can play so that they don't
     -- go over 61 - is this needed?
 
-    sortDoms :: Ord b => [(a, b)] -> [(a, b)]
+    sortDoms :: Ord b => [(Domino, b)] -> [(Domino, b)]
     sortDoms = sortBy (flip compare `on` snd) 
 
     -- find highest scoring domino 
     highestScoringDom :: Hand -> DominoBoard -> (Domino, End)
+    highestScoringDom hand InitBoard
+        | elem (5,4) hand = ((5,4), L) -- use (5,4) if you have first drop, as it gives score of 3, and max reply is 2
+        | otherwise = (head hand, L)
     highestScoringDom hand board =
         let
             possPlaysTuple = possPlays hand board
             possPlaysL = fst (possPlaysTuple) 
             possPlaysR = snd (possPlaysTuple)
-            highestLeftDom = head (sortDoms (zip possPlaysL [domScore domino board L | domino <- possPlaysL]))
-            highestRightDom = head (sortDoms (zip possPlaysR [domScore domino board R | domino <- possPlaysR]))
+            bestLeft = (head (sortBy (comparing snd) (zip possPlaysL [domScore domino board L | domino <- possPlaysL]))) -- get best dom on left and its score
+            bestRight = (head (sortBy (comparing snd) (zip possPlaysR [domScore domino board R | domino <- possPlaysR]))) 
+            bestLeftDom = fst bestLeft -- get just the domino from result of bestLeft
+            bestLeftDomScore = snd bestLeft -- get just the score from result of bestLeft
+            bestRightDom = fst bestRight
+            bestRightDomScore = snd bestRight
         in
-          if (snd (head highestLeftDom)) > (snd (head highestRightDom)) then ((fst (head highestLeftDom)), L) else ((fst (head highestLeftDom)), R)
+            if bestLeftDomScore > bestRightDomScore then (bestLeftDom, L) else (bestRightDom, R)
     
     -- given the hand, board and score of the player, can they win? (reach 61)
     canGet61 :: Hand -> DominoBoard -> Int -> Bool
