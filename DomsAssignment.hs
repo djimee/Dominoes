@@ -49,7 +49,7 @@ module DomsAssignment where
     highestScoringDom :: Hand -> DominoBoard -> (Domino, End)
     highestScoringDom hand InitBoard
         | elem (5,4) hand = ((5,4), L) -- use (5,4) if you have first drop, as it gives score of 3, and max reply is 2
-        | not(null(head hand, L)) = (head hand, L)
+        | otherwise = (head hand, L)
     highestScoringDom hand board =
         let
             possPlaysTuple = possPlays hand board
@@ -60,7 +60,7 @@ module DomsAssignment where
             bestLeftDom = if (not (null bestLeft)) then fst bestLeft else (0,0) -- get just the domino from result of bestLeft
             bestLeftDomScore = if (not (null bestLeft)) then snd bestLeft else -1 -- get just the score from result of bestLeft
             bestRightDom = if (not (null bestLeft)) then fst bestRight else (0,0)
-            bestRightDomScore = if (not (null bestLeft)) then snd bestRight else -1
+            bestRightDomScore =if (not (null bestLeft)) then snd bestRight else -1
         in
             if bestLeftDomScore > bestRightDomScore then (bestLeftDom, L) else (bestRightDom, R)
     
