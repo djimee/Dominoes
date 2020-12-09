@@ -8,6 +8,11 @@ module DomsAssignment where
 
     -- defensive player that has a focus on blocking the opponent
 
+    -- hsd
+    hsdPlayer :: DomsPlayer
+    hsdPlayer h b p s = (d,e)
+                        where (d,e) = highestScoringDom h b
+
     -- get the current board using the history
     getBoard :: DominoBoard -> [Domino]
     getBoard InitBoard = []
@@ -44,7 +49,7 @@ module DomsAssignment where
     highestScoringDom :: Hand -> DominoBoard -> (Domino, End)
     highestScoringDom hand InitBoard
         | elem (5,4) hand = ((5,4), L) -- use (5,4) if you have first drop, as it gives score of 3, and max reply is 2
-        | otherwise = (head hand, L)
+        | not(null(head hand, L)) = (head hand, L)
     highestScoringDom hand board =
         let
             possPlaysTuple = possPlays hand board
@@ -52,10 +57,10 @@ module DomsAssignment where
             possPlaysR = snd (possPlaysTuple)
             bestLeft = (head (sortBy (comparing snd) (zip possPlaysL [domScore domino board L | domino <- possPlaysL]))) -- get best dom on left and its score
             bestRight = (head (sortBy (comparing snd) (zip possPlaysR [domScore domino board R | domino <- possPlaysR]))) 
-            bestLeftDom = fst bestLeft -- get just the domino from result of bestLeft
-            bestLeftDomScore = snd bestLeft -- get just the score from result of bestLeft
-            bestRightDom = fst bestRight
-            bestRightDomScore = snd bestRight
+            bestLeftDom = if (not (null bestLeft)) then fst bestLeft else (0,0) -- get just the domino from result of bestLeft
+            bestLeftDomScore = if (not (null bestLeft)) then snd bestLeft else -1 -- get just the score from result of bestLeft
+            bestRightDom = if (not (null bestLeft)) then fst bestRight else (0,0)
+            bestRightDomScore = if (not (null bestLeft)) then snd bestRight else -1
         in
             if bestLeftDomScore > bestRightDomScore then (bestLeftDom, L) else (bestRightDom, R)
     
@@ -103,5 +108,3 @@ module DomsAssignment where
                 Just updatedBoard = playDom P1 d board end
 
     -- if opponent can win, block them if it is possible
-
-    -- get highest scoring domino given the hand and current board
