@@ -1,5 +1,6 @@
-module SmartPlayer1 where
+module DomsAssignment where
     import System.Random
+    import Data.Function 
     import Data.List
     import Debug.Trace
     import DomsMatch
@@ -10,6 +11,12 @@ module SmartPlayer1 where
     getBoard :: DominoBoard -> [Domino]
     getBoard InitBoard = []
     getBoard (Board d1 d2 history) = [d1 | (d1, _, _) <- history]
+
+    -- get the score playing a domino on a certain end would give
+    domScore :: Domino -> DominoBoard -> End -> Int
+    domScore domino board end = scoreBoard boardScore
+        where
+            Just boardScore = playDom P1 domino board end 
 
     {-- if the player has first drop and has the domino (5,4), play it
         because it scores 3 and has a maximum reply of 2 --}
@@ -22,12 +29,6 @@ module SmartPlayer1 where
     getOpponentHand :: DominoBoard -> [Domino]
     getOpponentHand InitBoard = []
     getOpponentHand (Board d1 d2 history) = [d1 | (d1, P2, _) <- history]
-
-    -- get the score playing a domino on a certain end would give
-    domScore :: Domino -> DominoBoard -> End -> Int
-    domScore domino board end = scoreBoard boardScore
-        where
-            Just boardScore = playDom P1 domino board end 
     
     -- get the score of a given player
     getScore :: Player -> Scores -> Int
@@ -44,8 +45,11 @@ module SmartPlayer1 where
 
     -- find highest scoring domino 
     highestScoringDom :: Hand -> DominoBoard -> (Domino, End)
-    highestScoringDom hand board = 
+    highestScoringDom hand board = if (fst leftHighest) > (fst rightHighest) then snd leftHighest L else snd rightHighest R
         where
+            sortDoms = sortBy (flip compare `on` snd)
+            leftHighest = head (sortDoms (zip possPlaysL [domScore domino board L | domino <- possPlaysL]))
+            rightHighest = head (sortDoms (zip possPlaysR [domScore domino board R | domino <- possPlaysR]))
             possPlaysTuple = possPlays hand board
             possPlaysL = fst (possPlaysTuple) 
             possPlaysR = snd (possPlaysTuple)
