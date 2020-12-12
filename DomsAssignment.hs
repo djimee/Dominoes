@@ -4,15 +4,21 @@ module DomsAssignment where
     import Data.Function 
     import Data.List
     import Data.Ord
+    import Data.Tuple
     import Debug.Trace
 
     -- defensive player that has a focus on blocking the opponent and preventing them from winning
 
+    highestScoringPlayer :: DomsPlayer
+    highestScoringPlayer hand board player scores = playHighestScoringDomino hand board
+
     -- offensive player that plays highest scoring domino, with a much larger focus on winning
     offensivePlayer :: DomsPlayer
-    offensivePlayer hand board player score
-        | canGet61 hand board score = playWinner hand board player score
+    offensivePlayer hand board player scores 
+        | canGet61 hand board scoreP1 = playWinner hand board player scores
         | otherwise = playHighestScoringDomino hand board
+            where 
+                (scoreP1, scoreP2) = if player == P1 then scores else swap scores
 
     -- get the current board using the history
     getBoard :: DominoBoard -> [Domino]
@@ -21,9 +27,11 @@ module DomsAssignment where
 
     -- get the score playing a domino on a certain end would give
     domScore :: Domino -> DominoBoard -> End -> Int
-    domScore domino board end = scoreBoard boardScore
+    domScore domino board end 
+        | canPlay domino end board = scoreBoard updatedBoard
+        | otherwise = -1
         where
-            Just boardScore = playDom P1 domino board end 
+            Just updatedBoard = playDom P1 domino board end
 
     -- get the hand of the opponent - assuming opponent is P2
     getOpponentHand :: DominoBoard -> [Domino]
@@ -43,11 +51,11 @@ module DomsAssignment where
         
     -- given the hand, board and score of the player, can they win? (reach 61)
     canGet61 :: Hand -> DominoBoard -> Int -> Bool
-    canGet61 _ InitBoard _ = False
     canGet61 [] board score = False
+    canGet61 _ InitBoard _ = False
     canGet61 (d:ds) board score 
-        | (canPlay d R board) && (totalRightScore == 61) = True
-        | (canPlay d L board) && (totalLeftScore == 61) = True
+        | canPlay d R board && totalRightScore == 61 = True
+        | canPlay d L board && totalLeftScore == 61 = True
         | otherwise = canGet61 ds board score
             where
                 totalRightScore = score + (domScore d board R)
@@ -66,11 +74,12 @@ module DomsAssignment where
     canPlaceDomino _ InitBoard = False
     canPlaceDomino hand board@(Board d1 d2 history)
         | possPlaysTuple /= ([],[]) || cantPlay = False
-        | fst possPlaysTuple == [] = canBlockOpponent hand opponentHand R board
-        | snd possPlaysTuple == [] = canBlockOpponent hand opponentHand L board
+        | possPlaysL == [] = canBlockOpponent hand opponentHand R board
+        | possPlaysR == [] = canBlockOpponent hand opponentHand L board
         | otherwise = False
             where 
                 possPlaysTuple = possPlays opponentHand board
+                (possPlaysL, possPlaysR) = possPlaysTuple
                 cantPlay = blocked opponentHand board
                 opponentHand = getOpponentHand board
     
@@ -91,26 +100,22 @@ module DomsAssignment where
     -- play domino that will win the game (reach 61) - if it is possible for them to win
     playWinner :: Hand -> DominoBoard -> Player -> Scores -> (Domino, End)
     playWinner (d:ds) board player scores
-        | player == P1 && domScore d board L + scoreP1 == 61 && canPlay d L board = (d, L)
-        | player == P1 && domScore d board R + scoreP1 == 61 && canPlay d R board = (d, R)
-        | player == P2 && domScore d board L + scoreP2 == 61 && canPlay d L board = (d, L)
-        | player == P2 && domScore d board R + scoreP2 == 61 && canPlay d R board = (d, R)
+        | canPlay d L board && domScore d board L + pScore == 61 = (d, L) 
+        | canPlay d R board && domScore d board R + pScore == 61 = (d, R)
         | otherwise = playWinner ds board player scores
             where 
-                (scoreP1, scoreP2) = if player == P1 then scores else swap scores
-
-    -- find and play highest scoring domino, if its the first drop, use (5,4) if possible otherwise........... 
+                (pScore, oScore) = if player == P1 then scores else swap scores
+        
+    -- find and play highest scoring domino, if its the first drop, use (5,4) if possible otherwise just play first domino in hand
     playHighestScoringDomino :: Hand -> DominoBoard -> (Domino, End)
     playHighestScoringDomino hand InitBoard
         | elem (5,4) hand = ((5,4), L) -- use (5,4) if you have first drop, as it gives score of 3, and max reply is 2
-        | otherwise = (head hand, L)
+        | otherwise = (head hand, L) 
     playHighestScoringDomino hand board
         | leftScore >= rightScore = (leftDom, L)
         | otherwise = (rightDom, R)
         where
-            possPlaysTuple = possPlays hand board
-            possPlaysL = fst (possPlaysTuple) 
-            possPlaysR = snd (possPlaysTuple)
+            (possPlaysL, possPlaysR) = possPlays hand board
             leftDoms = zip possPlaysL [domScore domino board L | domino <- possPlaysL]
             rightDoms = zip possPlaysR [domScore domino board R | domino <- possPlaysR]
             (leftDom, leftScore)
