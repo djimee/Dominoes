@@ -12,13 +12,15 @@ module DomsAssignment where
     highestScoringPlayer :: DomsPlayer
     highestScoringPlayer hand board player scores = playHighestScoringDomino hand board
 
-    -- offensive player that plays highest scoring domino, with a much larger focus on winning
+    -- offensive player that plays highest scoring domino, that focuses on winning ASAP
     offensivePlayer :: DomsPlayer
     offensivePlayer hand board player scores 
-        | canGet61 hand board scoreP1 = playWinner hand board player scores
+        | canGet61 hand board scorePlayer = playWinner hand board player scores
         | otherwise = playHighestScoringDomino hand board
             where 
-                (scoreP1, scoreP2) = if player == P1 then scores else swap scores
+                scorePlayer = getScore player scores
+
+    -- defensive player that focuses on blocking the opponent
 
     -- get the current board using the history
     getBoard :: DominoBoard -> [Domino]
@@ -27,9 +29,7 @@ module DomsAssignment where
 
     -- get the score playing a domino on a certain end would give
     domScore :: Domino -> DominoBoard -> End -> Int
-    domScore domino board end 
-        | canPlay domino end board = scoreBoard updatedBoard
-        | otherwise = -1
+    domScore domino board end = scoreBoard updatedBoard
         where
             Just updatedBoard = playDom P1 domino board end
 
@@ -46,9 +46,8 @@ module DomsAssignment where
 
     -- check for majority of one particuar spot value
 
-    -- if player is at 53, get a set of dominoes the player can play so that they don't
-    -- go over 61 - is this needed?
-        
+    -- try to get the score 59 - as it gives the best chance to reach 61
+
     -- given the hand, board and score of the player, can they win? (reach 61)
     canGet61 :: Hand -> DominoBoard -> Int -> Bool
     canGet61 [] board score = False
@@ -100,11 +99,21 @@ module DomsAssignment where
     -- play domino that will win the game (reach 61) - if it is possible for them to win
     playWinner :: Hand -> DominoBoard -> Player -> Scores -> (Domino, End)
     playWinner (d:ds) board player scores
-        | canPlay d L board && domScore d board L + pScore == 61 = (d, L) 
-        | canPlay d R board && domScore d board R + pScore == 61 = (d, R)
+        | canPlay d L board && domScore d board L + scorePlayer == 61 = (d, L) 
+        | canPlay d R board && domScore d board R + scorePlayer == 61 = (d, R)
         | otherwise = playWinner ds board player scores
             where 
-                (pScore, oScore) = if player == P1 then scores else swap scores
+                scorePlayer = getScore player scores
+
+    {-- if player is at 53, play a domino that will get less than 61 if there is no domino
+    that will get the player a score of 59 --}
+    playNoBustDomino :: Hand -> DominoBoard -> Int -> Maybe (Domino, End)
+    playNoBustDomino hand InitBoard score = Nothing
+    playNoBustDomino [] board score = Nothing
+    playNoBustDomino (d:ds) board score 
+        | canPlay d R board && domScore d board R + score <= 61 = Just (d, R)
+        | canPlay d L board && domScore d board L + score <= 61 = Just (d, L)
+        | otherwise = playNoBustDomino ds board score
         
     -- find and play highest scoring domino, if its the first drop, use (5,4) if possible otherwise just play first domino in hand
     playHighestScoringDomino :: Hand -> DominoBoard -> (Domino, End)
