@@ -11,7 +11,6 @@ module DomsAssignment where
     type ScorePredicate = Hand -> DominoBoard -> Int -> Bool {-- score predicate type that checks is a condition is true 
                                                                 given the players hand, current board and score --}
 
-
     -- offensive player that plays highest scoring domino, that focuses on winning ASAP
     offensivePlayer :: DomsPlayer
     offensivePlayer hand board player scores 
@@ -26,8 +25,9 @@ module DomsAssignment where
     -- defensive player that focuses on blocking the opponent
     defensivePlayer :: DomsPlayer
     defensivePlayer hand board player scores
+        | scorePlayer >= 51 && canGet59 hand board scorePlayer && not playerCanWin = play59Domino hand board player scores        
         | playerCanWin = playWinner hand board player scores
-        | otherwise = playRandom hand board player
+        | otherwise = playHighestScoringDomino hand board
             where
                 playerCanWin = canGet61 hand board scorePlayer
                 scorePlayer = if player == P1 then getScore player scores else getOppScore player scores
@@ -67,7 +67,18 @@ module DomsAssignment where
         where 
             noneHandValues = nub ([l | [((l,r),p, n)] <- historyList] ++ [r | [((l,r),p, n)] <- historyList])
             possibleDominoes = [(x,y) | x <- noneHandValues, y <- [0..6]]
-
+    {--
+    -- if the opponent can win, get their winning dominoes given the player, (opponents) hand, current board and scores
+    getOpponentWinningDominoes :: Player -> Hand -> DominoBoard -> Scores -> [Domino]
+    getOpponentWinningDominoes player hand board@(Board _ _ history) scores = leftWinningDominoes ++ rightWinningDominoes
+        where
+            scorePlayer = if player == P1 then getOppScore player scores else getScore player scores
+            opponentHand = predictOpponentHand player hand history
+            (possPlaysL, possPlaysR) = possPlays opponentHand board
+            leftWinningDominoes = [leftDoms | leftDoms <- possPlaysL, (scorePlayer + (getDomScore leftDoms board L) == 61)]
+            rightWinningDominoes = [rightDoms | rightDoms <- possPlaysR, (scorePlayer + (getDomScore rightDoms board R) == 61)]
+    --}
+    
     -- check if the player has a weak hand i.e. the highest scoring domino will give a score of 0 given the hand and board
     weakHand :: Hand -> DominoBoard -> Bool
     weakHand hand board
@@ -83,11 +94,13 @@ module DomsAssignment where
                 (rightDom, rightScore)
                     | not (null rightDoms) = maximumBy (comparing snd) rightDoms 
                     | otherwise = ((0,0),-1)
+
     {--
+    -- given the player, both players' hands and the board, can the player block the opponent?
+    canBlockOpponent :: Player -> Hand -> Hand -> DominoBoard -> Bool
 
-    canBlockOpponent :: 
-
-    playDominoToBlock ::
+    -- return the domino and the end to play it on that would block the opponent on the next go
+    playDominoToBlock :: Tactic
     --}
 
     -- check if the player can get 59 given their current hand, board and current score
@@ -130,8 +143,8 @@ module DomsAssignment where
     {-- guess the opponents hand using previous information on when they knocked and the 
         dominoes they knocked on i.e. if a domino knocks on a domino played on the left end 
         of the board such as (2,3), opponent must not have any dominoes with spot value 2 --}
-    guessOpponentHand :: Player -> Hand -> History -> Hand
-    guessOpponentHand player hand history = historyDoms \\ domSet
+    predictOpponentHand :: Player -> Hand -> History -> Hand
+    predictOpponentHand player hand history = historyDoms \\ domSet
         where
             knocks = getOpponentKnocks history player 
             knockBoard = getKnockBoards history knocks
@@ -155,6 +168,22 @@ module DomsAssignment where
         | otherwise = playWinner ds board player scores
             where 
                 scorePlayer = if player == P1 then getScore player scores else getOppScore player scores
+
+    {--
+    -- type Tactic = Hand -> DominoBoard -> Player -> Scores -> (Domino, End)     
+    playBlock61Domino :: [Domino] -> Tactic 
+    playBlock61Domino oppWinningDoms@(d:ds) hand board@(Board _ _ history) player scores 
+        | not (null oppWinningDoms) = playHighestScoringDomino (leftPoss ++ rightPoss) board
+        | otherwise = playHighestScoringDomino hand board
+            where
+                scorePlayer = if player == P1 then getScore player scores else getOppScore player scores
+                scoreOpp = if player == P1 then getOppScore player scores else getScore player scores
+                opponentHand = predictOpponentHand player hand history 
+                oppWinningDoms = getOpponentWinningDominoes player opponentHand
+                (possPlaysL, possPlaysR) = possPlays opponentHand board
+                leftPoss = [leftDoms | leftDoms <- possPlaysL, (scoreOpp + (getDomScore d board L) /= 61)]
+                rightPoss = [rightDoms | rightDoms <- possPlaysR, (scoreOpp + (getDomScore d board R) /= 61)]
+    --}
 
     -- if player is at 53, return the domino and the end to play it that will get less than 61 if there is no domino that will get the player a score of 59
     playNoBustDomino :: Tactic
