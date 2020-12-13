@@ -33,6 +33,13 @@ module DomsAssignment where
         where
             Just updatedBoard = playDom P1 domino board end
 
+    {-- recurse over the history to find two consecutive times the same player has placed a domino to find
+    the move numbers at which the opponent knocked --}
+    getOpponentKnocks :: History -> Player -> [Int]
+    getOpponentKnocks history@((fstDomino, P1, fstMoveNum):rest@((sndDomino, P2, sndMoveNum):hists)) player
+        | player == P1 && player == P2 = fstMoveNum : getOpponentKnocks rest player
+        | otherwise = getOpponentKnocks rest player
+
     -- get the score of the player (not opponent) given the scores of both players
     getScore :: Player -> Scores -> Int
     getScore player scores@(scoreP1, scoreP2) = if player == P1 then scoreP1 else scoreP2
@@ -41,82 +48,19 @@ module DomsAssignment where
     getOppScore :: Player -> Scores -> Int
     getOppScore player scores@(scoreP1, scoreP2) = if player == P2 then scoreP2 else scoreP1
 
-    {-- get remaining dominoes given the players hand - not taking into account what the player 
-        thinks the opponent has - i.e. what to guard against --}
-    getRemainingDominoes :: Hand -> History -> [Domino]
-    getRemainingDominoes [] history = domSet
-    getRemainingDominoes hand history = [d | d <- domSet, not (d `elem` (domino ++ hand))]
-        where 
-            (domino, player, moveNum) = unzip3 history
-
-    -- get the current board using the history
-    getBoard :: DominoBoard -> [Domino]
-    getBoard InitBoard = []
-    getBoard (Board d1 d2 history) = [d1 | (d1, _, _) <- history]
-
-    {-- recurse over the history to find two consecutive times the same player has placed a domino to find
-    the move numbers at which the opponent knocked --}
-    getOpponentKnocks :: History -> Player -> [Int]
-    getOpponentKnocks history@((fstDomino, P1, fstMoveNum):rest@((sndDomino, P2, sndMoveNum):hists)) player
-        | player == P1 && player == P2 = fstMoveNum : getOpponentKnocks rest player
-        | otherwise = getOpponentKnocks rest player
-
     {-- get the states of the board for the move numbers at which the opponent knocked given the history and list of move 
-        numbers at which the opponent knocked --}  
+    numbers at which the opponent knocked --}  
     getKnockBoards :: History -> [Int] -> [History]
     getKnockBoards [] _ = []
     getKnockBoards _ [] = []
     getKnockBoards history (k:ks) = [(d, p, moveNum) | (d, p, moveNum) <- history, moveNum == k] : getKnockBoards history ks
 
     -- get the dominoes that the opponent cannot have given the players hand and the history of opponent knocks
-    nonOpponentHand :: Hand -> [History] -> [Domino]
-    nonOpponentHand hand historyList = hand ++ possibleDominoes
+    getNonOpponentDominoes :: Hand -> [History] -> [Domino]
+    getNonOpponentDominoes hand historyList = hand ++ possibleDominoes
         where 
             noneHandValues = nub ([l | [((l,r),p, n)] <- historyList] ++ [r | [((l,r),p, n)] <- historyList])
             possibleDominoes = [(x,y) | x <- noneHandValues, y <- [0..6]]
-
-    guessOpponentHand :: Player -> Hand -> History -> Hand
-    guessOpponentHand player hand history =
-        let 
-            knocks = getOpponentKnocks history player 
-            knockBoard = getKnockBoards history knocks
-            nonHand = nonOpponentHand hand knockBoard
-            historyDoms = [d | (d,p,n) <- history] ++ nonHand
-        in 
-            filter (\x -> notElem x historyDoms) domSet
-
-    -- check for a dangerous domino e.g (6,6) if you don't have any more 6s in your hand, returns true if there is a dangerous domino
-    {--checkDanger :: Hand -> Maybe Domino
-    checkDanger [(l,r):ds]
-        | l == r && --}
-
-    {--
-    -- gets the hand and turns it into a list - for counting
-    dominoList ::  [(a, a)] -> [a]
-    dominoList handDominoes = concat [[a,b] | (a, b) <- handDominoes]
-
-    -- updates the elements of a list at a given position
-    updateDoms :: (Num a) => Int -> [a] -> [a]
-    updateDoms n xs = take n xs ++ [(xs !! n) + 1] ++ drop (n + 1) xs
-
-    -- performs count of occurences of each spot value
-    countOccurrences :: [(Int, Int)] -> [Int]
-    countOccurrences xs = go (dominoList xs) count
-        where 
-            go [] count = count
-            go (x:xs) count = go xs (updateDoms x count)
-            count = replicate 7 0       
-
-    -- check for majority of one particuar spot value
-    majoritySpotValue :: Hand -> Bool
-    majoritySpotValue hand = length highSpotValues /= 0
-        where 
-            frequencyList = countOccurrences hand
-            highSpotValues = [spotValue | spotValue <- frequencyList, spotValue > 10]
-
-    -- if player has the majority of one particular spot value, then play it
-    playMajoritySpotValue :: 
-    --}
 
     -- check if the player has a weak hand i.e. the highest scoring domino will give a score of 0 given the hand and board
     weakHand :: Hand -> DominoBoard -> Bool
@@ -170,6 +114,17 @@ module DomsAssignment where
             where
                 totalRightScore = score + (getDomScore d board R)
                 totalLeftScore = score + (getDomScore d board L)
+
+    {-- guess the opponents hand using previous information on when they knocked and the dominoes they knocked on
+    i.e. if a domino knocks on a domino played on the left end of the board such as (2,3), opponent must not have
+    any dominoes with spot value 2 --}
+    guessOpponentHand :: Player -> Hand -> History -> Hand
+    guessOpponentHand player hand history = historyDoms \\ domSet
+        where
+            knocks = getOpponentKnocks history player 
+            knockBoard = getKnockBoards history knocks
+            nonHand = getNonOpponentDominoes hand knockBoard
+            historyDoms = [d | (d,p,n) <- history] ++ nonHand
 
     -- play a domino that gets the players' score to 59 - if it is possible for them to reach 59
     play59Domino :: Hand -> DominoBoard -> Player -> Scores -> (Domino, End)
