@@ -27,6 +27,7 @@ module DomsAssignment where
     defensivePlayer hand board player scores
         | scorePlayer >= 51 && canGet59 hand board scorePlayer && not playerCanWin = play59Domino hand board player scores        
         | playerCanWin = playWinner hand board player scores
+        | canBlock player hand board = blockOp hand board player scores
         | otherwise = playHighestScoringDomino hand board
             where
                 playerCanWin = canGet61 hand board scorePlayer
@@ -78,7 +79,7 @@ module DomsAssignment where
             leftWinningDominoes = [leftDoms | leftDoms <- possPlaysL, (scorePlayer + (getDomScore leftDoms board L) == 61)]
             rightWinningDominoes = [rightDoms | rightDoms <- possPlaysR, (scorePlayer + (getDomScore rightDoms board R) == 61)]
     --}
-    
+
     -- check if the player has a weak hand i.e. the highest scoring domino will give a score of 0 given the hand and board
     weakHand :: Hand -> DominoBoard -> Bool
     weakHand hand board
@@ -150,6 +151,16 @@ module DomsAssignment where
             knockBoard = getKnockBoards history knocks
             nonHand = getNonOpponentDominoes hand knockBoard
             historyDoms = [d | (d,p,n) <- history] ++ nonHand
+    {--
+    -- Hand -> DominoBoard -> Player -> Scores -> (Domino, End) 
+    {-- play weak domino - to be used if weakHand returns true - weak is considered 
+        to be the domino that has the least occuring spot value in the hand --}
+    playWeakDomino :: Tactic 
+    playWeakDomino hand board player scores
+
+        where
+            scorePlayer = if player == P1 then getScore player scores else getOppScore player scores
+            --}
 
     -- return the domino and the end to play it that gets the players' score to 59 - if it is possible for them to reach 59
     play59Domino :: Tactic
@@ -224,3 +235,43 @@ module DomsAssignment where
             where
                 leftBoard = playDom player d board L -- check if domino will go on the left end
                 rightBoard = playDom player d board R 
+
+    canBlock :: Player -> Hand -> DominoBoard -> Bool
+    canBlock p h InitBoard = False
+    canBlock p h b@(Board _ _ his)
+        --make sure they can't play both sides, we can only block one!
+        | ((possPlaysR) /= []) && ((possPlaysL) /= []) = False  
+        | (possPlaysR) == [] = canBlockA h oh b L -- he can only `play on the left, check it!
+        | (possPlaysL) == [] = canBlockA h oh b R
+        | otherwise = False
+            where 
+                oh = predictOpponentHand p h his 
+                (possPlaysL, possPlaysR) = possPlays h b
+            
+    --Check if the player can block the opponent
+    canBlockA :: Hand -> Hand -> DominoBoard -> End -> Bool
+    canBlockA [] _ _ _ = False
+    canBlockA (d:doms) oh b e
+        | blocked oh pb = True
+        | otherwise = canBlockA doms oh b e
+            where 
+                Just pb = playDom P1 d b e   -- Player doesn't matter
+-- type Tactic = Hand -> DominoBoard -> Player -> Scores -> (Domino, End)
+    {-blockOp
+    --Notes: Chooses the domino that forces the opponent to knock on their turn. Only to be used if canBlock returns True.-}
+    blockOp :: Tactic
+    --Don't try and block if first drop
+    blockOp h InitBoard p s = playHighestScoringDomino h InitBoard
+    blockOp h b@(Board _ _ his) p s
+        | possPlaysL == [] = blockOpA h oh b L -- he can play on the left, check it!
+        | possPlaysR == [] = blockOpA h oh b R
+            where 
+                oh = predictOpponentHand p h his
+                (possPlaysL, possPlaysR) = possPlays h b
+
+    blockOpA :: Hand -> Hand -> DominoBoard -> End -> (Domino, End)
+    blockOpA (d:doms) oh b e
+        | blocked oh plb = (d, e)
+        | otherwise = blockOpA doms oh b e
+            where 
+                Just plb = playDom P1 d b e   -- Player doesn't matter
