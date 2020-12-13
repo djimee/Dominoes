@@ -27,16 +27,19 @@ module DomsAssignment where
                 playerCanWin = canGet61 hand board scorePlayer
                 scorePlayer = if player == P1 then getScore player scores else getOppScore player scores
 
-    -- get the current board using the history
-    getBoard :: DominoBoard -> [Domino]
-    getBoard InitBoard = []
-    getBoard (Board d1 d2 history) = [d1 | (d1, _, _) <- history]
-
     -- get the score playing a domino on a certain end would give
     getDomScore :: Domino -> DominoBoard -> End -> Int
     getDomScore domino board end = scoreBoard updatedBoard
         where
             Just updatedBoard = playDom P1 domino board end
+
+    -- get the score of the player (not opponent) given the scores of both players
+    getScore :: Player -> Scores -> Int
+    getScore player scores@(scoreP1, scoreP2) = if player == P1 then scoreP1 else scoreP2
+
+    -- get the score of the opponent given the scores of both players
+    getOppScore :: Player -> Scores -> Int
+    getOppScore player scores@(scoreP1, scoreP2) = if player == P2 then scoreP2 else scoreP1
 
     {-- get remaining dominoes given the players hand - not taking into account what the player 
         thinks the opponent has - i.e. what to guard against --}
@@ -46,23 +49,41 @@ module DomsAssignment where
         where 
             (domino, player, moveNum) = unzip3 history
 
-    opponentKnocking :: History -> Player -> [Int]
-    opponentKnocking history@((domino, P1, fstMoveNum):rest@((domino, P2, sndMoveNum):hists)) player
-        | player == P1 && player == P2 = fstMoveNum : opponentKnocking rest player
-        | otherwise = opponentKnocking rest player
+    -- get the current board using the history
+    getBoard :: DominoBoard -> [Domino]
+    getBoard InitBoard = []
+    getBoard (Board d1 d2 history) = [d1 | (d1, _, _) <- history]
 
-    -- get the hand of the opponent - assuming opponent is P2
-    getOpponentHand :: DominoBoard -> [Domino]
-    getOpponentHand InitBoard = []
-    getOpponentHand (Board d1 d2 history) = [d1 | (d1, P2, _) <- history]
-    
-    -- get the score of the player (not opponent)
-    getScore :: Player -> Scores -> Int
-    getScore player scores@(scoreP1, scoreP2) = if player == P1 then scoreP1 else scoreP2
+    {-- recurse over the history to find two consecutive times the same player has placed a domino to find
+    the move numbers at which the opponent knocked --}
+    getOpponentKnocks :: History -> Player -> [Int]
+    getOpponentKnocks history@((fstDomino, P1, fstMoveNum):rest@((sndDomino, P2, sndMoveNum):hists)) player
+        | player == P1 && player == P2 = fstMoveNum : getOpponentKnocks rest player
+        | otherwise = getOpponentKnocks rest player
 
-    -- get the score of a given player
-    getOppScore :: Player -> Scores -> Int
-    getOppScore player scores@(scoreP1, scoreP2) = if player == P2 then scoreP2 else scoreP1
+    {-- get the states of the board for the move numbers at which the opponent knocked given the history and list of move 
+        numbers at which the opponent knocked --}  
+    getKnockBoards :: History -> [Int] -> [History]
+    getKnockBoards [] _ = []
+    getKnockBoards _ [] = []
+    getKnockBoards history (k:ks) = [(d, p, moveNum) | (d, p, moveNum) <- history, moveNum == k] : getKnockBoards history ks
+
+    -- get the dominoes that the opponent cannot have given the players hand and the history of opponent knocks
+    nonOpponentHand :: Hand -> [History] -> [Domino]
+    nonOpponentHand hand historyList = hand ++ possibleDominoes
+        where 
+            noneHandValues = nub ([l | [((l,r),p, n)] <- historyList] ++ [r | [((l,r),p, n)] <- historyList])
+            possibleDominoes = [(x,y) | x <- noneHandValues, y <- [0..6]]
+
+    guessOpponentHand :: Player -> Hand -> History -> Hand
+    guessOpponentHand player hand history =
+        let 
+            knocks = getOpponentKnocks history player 
+            knockBoard = getKnockBoards history knocks
+            nonHand = nonOpponentHand hand knockBoard
+            historyDoms = [d | (d,p,n) <- history] ++ nonHand
+        in 
+            filter (\x -> notElem x historyDoms) domSet
 
     -- check for a dangerous domino e.g (6,6) if you don't have any more 6s in your hand, returns true if there is a dangerous domino
     {--checkDanger :: Hand -> Maybe Domino
@@ -97,7 +118,7 @@ module DomsAssignment where
     playMajoritySpotValue :: 
     --}
 
-    -- check if the player has a weak hand i.e. the highest scoring domino will give a score of 0
+    -- check if the player has a weak hand i.e. the highest scoring domino will give a score of 0 given the hand and board
     weakHand :: Hand -> DominoBoard -> Bool
     weakHand hand board
         | leftScore == 0 || rightScore == 0 = True -- check if the highest scoring domino on either side is 0
@@ -113,9 +134,7 @@ module DomsAssignment where
                     | not (null rightDoms) = maximumBy (comparing snd) rightDoms 
                     | otherwise = ((0,0),-1)
 
-    --playWeakDom
-
-    -- check if the player can get 59 given their current score
+    -- check if the player can get 59 given their current hand, board and current score
     canGet59 :: Hand -> DominoBoard -> Int -> Bool
     canGet59 [] board score = False
     canGet59 _ InitBoard _ = False
@@ -139,39 +158,8 @@ module DomsAssignment where
                 totalRightScore = score + (getDomScore d board R)
                 totalLeftScore = score + (getDomScore d board L)
 
-    -- given the opponents' hand, board and score, can they win?
-    canOpponentGet61 :: Hand -> DominoBoard -> Int -> Bool
-    canOpponentGet61 _ InitBoard _ = False
-    canOpponentGet61 [] board score = False
-    canOpponentGet61 opponentHand board oppScore = canGet61 opponentHand board oppScore 
-        where 
-            opponentHand = getOpponentHand board
-
-    -- -- check if the opponent can place a domino before checking whether the opponent can be blocked
-    -- canPlaceDomino :: Hand -> DominoBoard -> Bool
-    -- canPlaceDomino _ InitBoard = False
-    -- canPlaceDomino hand board@(Board d1 d2 history)
-    --     | possPlaysTuple /= ([],[]) || cantPlay = False
-    --     | possPlaysL == [] = canBlockOpponent hand opponentHand board R
-    --     | possPlaysR == [] = canBlockOpponent hand opponentHand board L
-    --     | otherwise = False
-    --         where 
-    --             possPlaysTuple = possPlays opponentHand board
-    --             (possPlaysL, possPlaysR) = possPlaysTuple
-    --             cantPlay = blocked opponentHand board
-    --             opponentHand = getOpponentHand board
-    
-    -- -- check if the opponent can be blocked by placing a certain domino
-    -- canBlockOpponent :: Hand -> Hand -> DominoBoard -> End -> Bool
-    -- canBlockOpponent _ _ InitBoard _ = False
-    -- canBlockOpponent [] _ _ _ = False
-    -- canBlockOpponent (d:ds) opponentHand board@(Board d1 d2 history) end
-    --     | blocked opponentHand updatedBoard = True
-    --     | otherwise = canBlockOpponent ds opponentHand board end
-    --         where
-    --             Just updatedBoard = playDom P1 d board end
-    
-    -- given the hand, board and score of the player, can they win? (reach 61)
+    {-- given the hand, board and current score, check if the player can play a domino that will give a score
+        under 61 - used when score > 53 --}
     canPlayNoBustDomino :: Hand -> DominoBoard -> Int -> Bool
     canPlayNoBustDomino [] board score = False
     canPlayNoBustDomino _ InitBoard _ = False
@@ -229,16 +217,6 @@ module DomsAssignment where
             (rightDom, rightScore)
                 | not (null rightDoms) = maximumBy (comparing snd) rightDoms 
                 | otherwise = ((0,0),-1)
-
-    -- if opponent can be blocked and made to knock on their next turn, block them
-
-    {-- if opponent can win, block them if it is possible - used if the opponent can win
-    blockOppWin :: Hand -> DominoBoard -> Player -> Scores -> (Domino, End)
-    blockOppWin hand board player scores
-        where
-            oppHand = getOpponentHand board
-            scorePlayer = if player == P1 then getScore player scores else getOppScore player scores
-    --}
     
     {-- play random domino function - low level function that just plays first domino that will go 
         (from DomsMatch) --}
