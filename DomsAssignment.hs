@@ -7,8 +7,10 @@ module DomsAssignment where
     import Data.Tuple
     import Debug.Trace
     
-    type Tactic = Hand -> DominoBoard -> Player -> Scores -> (Domino, End)
-    type ScorePredicate = Hand -> DominoBoard -> Int -> Bool
+    type Tactic = Hand -> DominoBoard -> Player -> Scores -> (Domino, End) 
+    type ScorePredicate = Hand -> DominoBoard -> Int -> Bool {-- score predicate type that checks is a condition is true 
+                                                                given the players hand, current board and score --}
+
 
     -- offensive player that plays highest scoring domino, that focuses on winning ASAP
     offensivePlayer :: DomsPlayer
