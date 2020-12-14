@@ -125,18 +125,9 @@ module DomsAssignment where
             where
                 totalRightScore = score + (getDomScore d board R)
                 totalLeftScore = score + (getDomScore d board L)
-    {------------------------------------ UNABLE TO FINISH THES FUNCTIONS, HERE TO SHOW DESIGN
-    -- given the player, hand, board and score of the opponent, can the opponent win?
-    oppCanGet61 :: Player -> ScorePredicate
-    oppCanGet61 [] board oppScore = False
-    oppCanGet61 _ InitBoard _ = False
-    oppCanGet61 hand board@(Board _ _ history) oppScore
-            where
-                scoreOpp = if player == P1 then getOppScore player scores else getScore player scores
-                opponentHand = predictOpponentHand player hand history
 
     {-- given the hand, board and current score, check if the player can play 
-        a domino that will give a score under 61 - used when score > 53 --}
+    a domino that will give a score under 61 - used when score > 53 --}
     canPlayNoBustDomino :: ScorePredicate
     canPlayNoBustDomino [] board score = False
     canPlayNoBustDomino _ InitBoard _ = False
@@ -147,6 +138,16 @@ module DomsAssignment where
             where
                 totalRightScore = score + (getDomScore d board R)
                 totalLeftScore = score + (getDomScore d board L)
+
+    {------------------------------------ UNABLE TO FINISH THES FUNCTIONS, HERE TO SHOW DESIGN
+    -- given the player, hand, board and score of the opponent, can the opponent win?
+    oppCanGet61 :: Player -> ScorePredicate
+    oppCanGet61 [] board oppScore = False
+    oppCanGet61 _ InitBoard _ = False
+    oppCanGet61 hand board@(Board _ _ history) oppScore
+            where
+                scoreOpp = if player == P1 then getOppScore player scores else getScore player scores
+                opponentHand = predictOpponentHand player hand history
     
     -- check if the given player can block the opponent given their hand, opponents hand, the board and the end
     canBlockOpponent :: Player -> Hand -> Hand -> DominoBoard -> End -> Bool
@@ -175,38 +176,42 @@ module DomsAssignment where
         where 
             flattenedHand = [l | (l,r) <- hand] ++ [r | (l,r) <- hand]
 
-    -- can this be swapped out instead of recursion?
+    -- get the list of dominoes that are considered weak (scoring <= n) by combining the left and right lists of dominoes 
     weakDominoes :: Hand -> [Int] -> [Domino]
-    weakDominoes hand nOccurs@(o:os) = weakDominoesL ++ weakDominoesR
+    weakDominoes hand nOccurs@(o:os) = weakDominoesLeft ++ weakDominoesRight
         where 
-            
+            weakDominoesLeft = weakDominoesL hand nOccurs
+            weakDominoesRight = weakDominoesR hand nOccurs 
+
+    -- get list of dominoes considered weak by comparing left pip values given the hand and list of occurrences
+    weakDominoesL :: Hand -> [Int] -> [Domino]       
     weakDominoesL hand nOccurs@(o:os) = [(l,r) | (l,r) <- domSet, l == o] ++  weakDominoesL domSet os  
         where
             flattenedHand = [l | (l,r) <- hand] ++ [r | (l,r) <- hand]
             nOccurs = nOccurrencePips hand 3 flattenedHand
-            
+
+    -- get list of dominoes considered weak by comparing left pip values given the hand and list of occurrences  
     weakDominoesR :: Hand -> [Int] -> [Domino]
-    weakDominoesR hand (o:os) = [(l,r) | (l,r) <- domSet, r == o] ++ weakDominoesR domSet os
+    weakDominoesR hand nOccurs@(o:os) = [(l,r) | (l,r) <- domSet, r == o] ++ weakDominoesR domSet os
         where
             flattenedHand = [l | (l,r) <- hand] ++ [r | (l,r) <- hand]
-            nOccurs = nOccurrencePips hand 1 flattenedHand
+            nOccurs = nOccurrencePips hand 3 flattenedHand
 
     {-- play weak domino - to be used if weakHand returns true - weak is considered 
         to be the domino that has the least occuring spot value in the hand --}
     playWeakDomino :: [Domino] -> Tactic 
     playWeakDomino weakDoms@(d:ds) hand board@(Board _ _ history) player scores
-        | canPlay d L board && leftScore + scoreOpp == scoreOpp && leftScore + scorePlayer == scorePlayer = (d,L) -- checks 
-        | canPlay d R board && rightScore + scoreOpp == scoreOpp && rightScore + scorePlayer == scorePlayer = (d,R)
+        | canPlay d L board && leftScore + scorePlayer == scorePlayer = (d,L) -- checks if the domino can be played on the given end and the playing the domino gives a score of 0
+        | canPlay d R board && rightScore + scorePlayer == scorePlayer = (d,R)
         | otherwise = playWeakDomino ds hand board player scores
             where
                 scorePlayer = if player == P1 then getScore player scores else getOppScore player scores
                 scoreOpp = if player == P1 then getOppScore player scores else getScore player scores
                 leftScore = getDomScore d board L
                 rightScore = getDomScore d board R
-                flattenedHand = [l | (l,r) <- hand] ++ [r | (l,r) <- hand]
+                flattenedHand = [l | (l,r) <- hand] ++ [r | (l,r) <- hand] -- converts tuple of dominoes to a flattened list - used to count occurrences
                 weakDominoes = weakDominoesL hand flattenedHand ++ weakDominoesR hand flattenedHand
                 weakDoms = weakDominoes
-
 
     -- return the domino and the end to play it that gets the players' score to 59 - if it is possible for them to reach 59
     play59Domino :: Tactic
