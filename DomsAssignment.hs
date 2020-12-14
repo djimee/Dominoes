@@ -25,8 +25,22 @@ module DomsAssignment where
     -- defensive player that focuses on blocking the opponent and plays more cautiously by checking if their hand is weak
     defensivePlayer :: DomsPlayer
     defensivePlayer hand board player scores
-        | checkWeakHand hand board = playWeakDomino weakDominoes hand board player scores -- if hand is weak, try play a domino that 'stitches' the game next turn
+        -- | checkWeakHand hand board = playWeakDomino weakDominoes hand board player scores -- if hand is weak, try play a domino that 'stitches' the game next turn
         | scorePlayer >= 51 && canGet59 hand board scorePlayer && not playerCanWin = play59Domino hand board player scores         
+        | playerCanWin = playWinner hand board player scores
+        | otherwise = playHighestScoringDomino hand board
+            where
+                playerCanWin = canGet61 hand board scorePlayer
+                scorePlayer = if player == P1 then getScore player scores else getOppScore player scores
+                -- flattenedHand = [l | (l,r) <- hand] ++ [r | (l,r) <- hand]
+                -- weakDominoes = weakDominoesL hand flattenedHand ++ weakDominoesR hand flattenedHand
+
+    -- hybrid player that combines both players, just an extra player but offensivePlayer and defensivePlayer are only ones tested
+    hybridPlayer :: DomsPlayer
+    hybridPlayer hand board player scores
+        | checkWeakHand hand board = playWeakDomino weakDominoes hand board player scores -- if hand is weak, try play a domino that 'stitches' the game next turn
+        | scorePlayer >= 51 && canGet59 hand board scorePlayer && not playerCanWin = play59Domino hand board player scores -- if score>=51, player can get 59 and cannot win, plays a domino to get 59
+        | scorePlayer > 53 && canPlayNoBustDomino hand board scorePlayer && not playerCanWin = playNoBustDomino hand board player scores -- if score>53, player can play a domino that wont bust and cannot win, plays a domino that will not bust     
         | playerCanWin = playWinner hand board player scores
         | otherwise = playHighestScoringDomino hand board
             where
